@@ -1,86 +1,37 @@
-import React from "react";
-import { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { FiChevronDown, FiChevronUp, FiRefreshCw } from "react-icons/fi";
-import { faker } from "@faker-js/faker/locale/en";
-import { faker as fakerDe } from "@faker-js/faker/locale/de";
-import { faker as fakerJp } from "@faker-js/faker/locale/ja";
-import { faker as fakerRu } from "@faker-js/faker/locale/ru";
+import { GrDocumentCsv } from "react-icons/gr";
+import { useAuth } from "../AuthProvider";
 import { BiSolidLike } from "react-icons/bi";
-
-const PEXELS_API_KEY =
-  "ghYbRtUxLRpOsEAQyJEQv6YBBEIaa55oQjtaNJHQ1DM6hQlYD5ZNcPbL";
-const languageMap = {
-  "en-US": faker,
-  "de-DE": fakerDe,
-  "ja-JP": fakerJp,
-  "ru-RU": fakerRu,
-};
-
 const languages = [
   { label: "English (USA)", value: "en-US" },
   { label: "German (Germany)", value: "de-DE" },
   { label: "Japanese (Japan)", value: "ja-JP" },
   { label: "Russian (Russia)", value: "ru-RU" },
 ];
-
-const times = (n, fn) => {
-  if (n < 0) throw new Error("The first argument cannot be negative.");
-  return (arg) => {
-    for (let i = Math.floor(n); i--; ) {
-      arg = fn(arg);
-    }
-    return Math.random() < n % 1 ? fn(arg) : arg;
-  };
-};
-
 const Home = () => {
+  const {
+    locale,
+    setLocale,
+    seed,
+    setSeed,
+    likes,
+    setLikes,
+    reviewsCount,
+    setReviewsCount,
+    generateBatch,
+    coverUrls,
+  } = useAuth();
   const [expandedId, setExpandedId] = useState(null);
-  const [locale, setLocale] = useState("en-US");
-  const [seed, setSeed] = useState("1234");
-  const [likes, setLikes] = useState(3.7);
-  const [reviewsCount, setReviewsCount] = useState(4.7);
   const [books, setBooks] = useState([]);
   const [batch, setBatch] = useState(0);
   const containerRef = useRef(null);
-
-  const generateSampleReviews = (count, fake) =>
-    Array.from({ length: count }, () => ({
-      quote: fake.lorem.sentence(),
-      author: fake.person.fullName(),
-      org: fake.company.name(),
-    }));
-
-  const generateBatch = (batchIndex) => {
-    const fake = languageMap[locale];
-    fake.seed(`${seed}-${batchIndex}`);
-    const newBatch = [];
-    const addLikes = times(likes, (prev) => prev + 1);
-    const addReviews = times(reviewsCount, (prev) => prev + 1);
-
-    for (let i = 0; i < 10; i++) {
-      const idx = batchIndex * 10 + i + 1;
-      const totalLikes = addLikes(0);
-      const totalReviews = Math.floor(addReviews(0));
-      newBatch.push({
-        id: idx,
-        isbn: fake.string.alphanumeric(13),
-        title: fake.lorem.words(3),
-        author: fake.person.fullName(),
-        publisher: fake.company.name(),
-        likes: totalLikes,
-        reviews: generateSampleReviews(totalReviews, fake),
-      });
-    }
-    return newBatch;
-  };
-
   useEffect(() => {
     const initialBatch0 = generateBatch(0);
     const initialBatch1 = generateBatch(1);
     setBooks([...initialBatch0, ...initialBatch1]);
     setBatch(1);
   }, [locale, seed, likes, reviewsCount]);
-
   const handleScroll = (e) => {
     const bottom =
       e.target.scrollHeight - e.target.scrollTop <= e.target.clientHeight + 10;
@@ -91,39 +42,61 @@ const Home = () => {
       setBatch(nextBatch);
     }
   };
-
-  const [coverUrls, setCoverUrls] = useState([]);
-
-  useEffect(() => {
-    fetch("https://api.pexels.com/v1/search?query=book%20cover&per_page=23", {
-      headers: {
-        Authorization: PEXELS_API_KEY,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        const urls = data.photos.map((photo) => photo.src.large);
-        setCoverUrls(urls);
-      })
-      .catch((err) => console.error(err));
-  }, []);
-
+  const exportCSV = () => {
+    if (!books.length) return;
+    const headers = [
+      "ID",
+      "ISBN",
+      "Title",
+      "Author",
+      "Publisher",
+      "Likes",
+      "Reviews Count",
+      "Reviews (Quote - Author - Org)",
+    ];
+    const rows = books.map((book) => [
+      book.id,
+      book.isbn,
+      `"${book.title}"`,
+      `"${book.author}"`,
+      `"${book.publisher}"`,
+      book.likes,
+      book.reviews.length,
+      `"${book.reviews
+        .map((r) => `${r.quote} — ${r.author}, ${r.org}`)
+        .join(" | ")}"`,
+    ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `books_export_${new Date().toISOString()}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
   const randomIndex = Math.floor(Math.random() * coverUrls.length);
   const randomCover = coverUrls[randomIndex] || "";
-
   return (
     <div
       onScroll={handleScroll}
       ref={containerRef}
       className="max-h-screen overflow-y-auto   rounded-lg shadow-md"
     >
-      <div className="sticky top-0">
-        <div className="flex flex-wrap gap-4  p-6 rounded-md bg-gray-100  ">
-          <div className="relative w-fit">
+      <div className="sticky top-0 z-10">
+        <div className="flex justify-between flex-col lg:flex-row items-start lg:items-center gap-3 sm:gap-6 sm:p-6 p-4 rounded-md bg-gray-50">
+          <div className="relative w-full lg:w-fit">
             <select
               onChange={(e) => setLocale(e.target.value)}
               value={locale}
-              className="px-6 pt-6 pb-2  font-semibold border border-gray-300 focus:outline-none focus:border-gray-300  bg-white rounded"
+              className="w-full lg:w-auto px-6 pt-6 pb-2 font-semibold border border-gray-300 focus:outline-none focus:border-gray-300 bg-white rounded"
             >
               {languages.map((lang) => (
                 <option key={lang.value} value={lang.value}>
@@ -131,15 +104,14 @@ const Home = () => {
                 </option>
               ))}
             </select>
-            <span className="absolute left-7 top-[17px] text-gray-500 -translate-y-1/2 ">
+            <span className="absolute left-7 top-[17px] text-gray-500 -translate-y-1/2">
               Language
             </span>
           </div>
-
-          <div className="relative w-fit">
+          <div className="relative w-full lg:w-fit">
             <input
               type="number"
-              className="border font-semibold  border-gray-300 focus:outline-none focus:border-gray-300  fo  bg-white rounded-md px-6 pt-6 pb-2"
+              className="w-full lg:w-auto border font-semibold border-gray-300 focus:outline-none focus:border-gray-300 bg-white rounded-md px-6 pt-6 pb-2"
               placeholder="Seed"
               value={seed}
               onChange={(e) => setSeed(e.target.value)}
@@ -149,14 +121,12 @@ const Home = () => {
               size={18}
               onClick={() => setSeed(String(Math.floor(Math.random() * 10000)))}
             />
-            <span className="absolute left-6 top-[17px] text-gray-500 -translate-y-1/2 ">
+            <span className="absolute left-6 top-[17px] text-gray-500 -translate-y-1/2">
               seed
             </span>
           </div>
-
-          <div className="flex justify-between flex-col">
-            <label className="text-sm font-medium">Likes </label>
-
+          <div className="flex flex-col gap-2 w-full lg:w-fit">
+            <label className="text-sm font-medium">Likes</label>
             <input
               type="range"
               min="0"
@@ -164,41 +134,48 @@ const Home = () => {
               step="0.1"
               value={likes}
               onChange={(e) => setLikes(parseFloat(e.target.value))}
-              className="w-32"
+              className="w-full lg:w-32"
             />
           </div>
-          <div className="relative w-fit">
+          <div className="relative w-full lg:w-fit">
             <input
               type="number"
               step="0.1"
               value={reviewsCount}
               onChange={(e) => setReviewsCount(parseFloat(e.target.value))}
-              className="px-6 pt-6 pb-2 font-semibold bg-white focus:outline-none focus:border-gray-300  border border-gray-300 rounded "
+              className="w-full lg:w-auto px-6 pt-6 pb-2 font-semibold bg-white focus:outline-none focus:border-gray-300 border border-gray-300 rounded"
             />
-            <span className="absolute left-6 top-[17px] text-gray-500 -translate-y-1/2 ">
+            <span className="absolute left-6 top-[17px] text-gray-500 -translate-y-1/2">
               Reviews
             </span>
           </div>
+          <div className="w-full lg:w-fit">
+            <GrDocumentCsv
+              className="text-4xl cursor-pointer hover:text-blue-700 text-blue-500"
+              onClick={exportCSV}
+            />
+          </div>
         </div>
-      </div>
-
-      <div className="bg-white rounded-lg overflow-hidden shadow-md">
         <table className="w-full text-left">
-          <thead className="border-b sticky">
+          <thead className="border-b border-gray-400 bg-white ">
             <tr className="s">
-              <th className="p-2">#</th>
-              <th className="p-2">ISBN</th>
+              <th className="p-2 ">#</th>
+              <th className="p-2 ">ISBN</th>
               <th className="p-2">Title</th>
               <th className="p-2">Author(s)</th>
               <th className="p-2">Publisher</th>
             </tr>
           </thead>
+        </table>
+      </div>
+      <div className="bg-white rounded-lg overflow-hidden shadow-md">
+        <table className="w-full  text-left">
           <tbody>
             {books.map((book, index) => (
               <React.Fragment key={book.id}>
                 <tr
                   className={`cursor-pointer ${
-                    expandedId === book.id ? "bg-blue-100" : "hover:bg-gray-100"
+                    expandedId === book.id ? "bg-blue-100" : "hover:bg-blue-100"
                   }`}
                   onClick={() =>
                     setExpandedId(expandedId === book.id ? null : book.id)
@@ -217,10 +194,9 @@ const Home = () => {
                   <td className="p-2">{book.author}</td>
                   <td className="p-2">{book.publisher}</td>
                 </tr>
-
                 {expandedId === book.id && (
                   <tr>
-                    <td colSpan="5" className="bg-white px-6 py-4 border-t">
+                    <td colSpan="5" className="bg-white px-6 py-4 ">
                       <div className="flex items-start gap-4">
                         <div className="flex flex-col items-center gap-4">
                           {randomCover ? (
