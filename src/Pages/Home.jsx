@@ -156,7 +156,7 @@ const Home = () => {
             />
           </div>
         </div>
-        <table className="w-full text-left">
+        <table className="min-w-full table-auto text-left">
           <thead className="border-b border-gray-400 bg-white ">
             <tr className="s">
               <th className="p-2 ">#</th>

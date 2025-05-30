@@ -1,4 +1,3 @@
-// context/AuthProvider.js
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { faker } from "@faker-js/faker/locale/en";
 import { faker as fakerDe } from "@faker-js/faker/locale/de";
