@@ -1,6 +1,6 @@
-# 📚 Single Page Book Listing App
+# 📚 Single Page Listing App
 
-A modern, single-page book listing application built with **React**, **Tailwind CSS**, and **Vite**. Features include infinite scrolling, CSV export, gallery view toggle, and dynamic data generation using Faker.js.
+A modern, single-page book listing application built with **React**, **Tailwind CSS**, and **Vite**. Features include infinite scrolling, CSV export, and dynamic data generation using Faker.js.
 
 🔗 **Live Demo**: [https://itrationfive.netlify.app/](https://itrationfive.netlify.app/)
 
@@ -10,7 +10,6 @@ A modern, single-page book listing application built with **React**, **Tailwind 
 
 - 📖 Infinite scrolling for seamless book browsing
 - 🔁 Expandable list view with detailed info
-- 🖼️ Gallery view for visually rich display
 - 🌍 Multi-language faker book data
 - 📁 Export visible data as CSV
 - 🔍 Integrated with Pexels API for cover images
